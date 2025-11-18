@@ -1,0 +1,8 @@
+__pycache__/
+.vscode
+poetry.lock
+mypy_cache/
+pytest_cache/
+dist/
+*pyc
+ARBORESCENCE.md

@@ -1,0 +1,146 @@
+# Configuration version (DO NOT MODIFY)
+[meta]
+config_version = "1.0.0"
+created_at = "2025-11-17T10:30:00Z"  # Auto-généré
+last_modified = "2025-11-17T10:30:00Z"  # Auto-mis à jour
+
+# ============================================================================
+# TIMEOUTS CONFIGURATION
+# ============================================================================
+# All timeouts are in seconds
+[timeouts]
+# Maximum time to wait for page to load completely
+page_load = 30
+
+# Maximum time to wait for a specific element to appear
+element_wait = 10
+
+# Maximum time for JavaScript execution
+script_execution = 5
+
+# Maximum time to wait for AI response
+ai_response = 60
+
+# Maximum time to wait for form submission
+form_submission = 15
+
+# ============================================================================
+# RETRY CONFIGURATION
+# ============================================================================
+[retry]
+# Maximum number of retry attempts for failed operations
+max_attempts = 3
+
+# Multiplier for exponential backoff (delay *= backoff_factor)
+backoff_factor = 2.0
+
+# Initial delay before first retry (in seconds)
+initial_delay = 1.0
+
+# ============================================================================
+# BROWSER CONFIGURATION
+# ============================================================================
+[browser]
+# Selenium implicit wait (0 = disabled, recommended)
+implicit_wait = 0
+
+# Browser window dimensions
+window_width = 1920
+window_height = 1080
+
+# Custom user agent (empty = use browser default)
+user_agent = ""
+
+# Page load strategy: "normal", "eager", "none"
+page_load_strategy = "normal"
+
+# ============================================================================
+# AI CONFIGURATION
+# ============================================================================
+[ai]
+# Maximum tokens for AI responses
+max_tokens = 2000
+
+# Temperature for response generation (0.0 = deterministic, 2.0 = creative)
+temperature = 0.7
+
+# Default AI provider if not specified via CLI
+# Options: "gemini", "claude", "openai", "deepseek", "copilot"
+default_provider = "gemini"
+
+# Timeout for streaming responses (seconds)
+stream_timeout = 120
+
+# ============================================================================
+# DSL CONFIGURATION
+# ============================================================================
+[dsl]
+# Cache parsed DSL expressions to improve performance
+cache_parsed_expressions = true
+
+# Maximum allowed length for a single DSL expression
+max_expression_length = 500
+
+# Case-sensitive matching in DSL expressions
+case_sensitive = false
+
+# ============================================================================
+# LOGGING CONFIGURATION
+# ============================================================================
+[logging]
+# Log level: "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"
+level = "INFO"
+
+# Log format: "structured" (JSON) or "simple" (human-readable)
+format = "structured"
+
+# Maximum log file size in MB before rotation
+max_file_size_mb = 10
+
+# Number of backup log files to keep
+backup_count = 5
+
+# Include timestamps in console output
+console_timestamps = true
+
+# Log file path (relative to $HOME/.gformfiller/logs/)
+file_name = "gformfiller.log"
+
+# ============================================================================
+# PERFORMANCE CONFIGURATION
+# ============================================================================
+[performance]
+# Enable parallel AI calls for multiple questions (future feature)
+parallel_ai_calls = false
+
+# Cache AI responses to avoid duplicate API calls (future feature)
+cache_ai_responses = false
+
+# Cache TTL in seconds (if caching enabled)
+cache_ttl = 3600
+
+# ============================================================================
+# VALIDATION CONFIGURATION
+# ============================================================================
+[validation]
+# Verify all required fields are filled before submission
+check_required_fields = true
+
+# Validate email format for email fields
+validate_email_format = true
+
+# Validate phone format for phone fields
+validate_phone_format = true
+
+# Allowed phone formats: "international", "national", "any"
+phone_format = "any"
+
+# ============================================================================
+# SECURITY CONFIGURATION
+# ============================================================================
+[security]
+# Mask sensitive data in logs (API keys, passwords, etc.)
+mask_sensitive_data = true
+
+# Verify SSL certificates for HTTPS requests
+verify_ssl = true

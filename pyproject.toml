@@ -1,0 +1,40 @@
+[project]
+name = "gformfiller"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "EnamSon",email = "junior.enama@facsciences-uy1.cm"}
+]
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "selenium (>=4.38.0,<5.0.0)",
+    "webdriver-manager (>=4.0.2,<5.0.0)",
+    "typer (>=0.20.0,<0.21.0)",
+    "pydantic (>=2.12.4,<3.0.0)",
+    "tomli (>=2.3.0,<3.0.0)",
+    "tomli-w (>=1.2.0,<2.0.0)"
+]
+
+[tool.poetry]
+packages = [{include = "gformfiller", from = "src"}]
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[dependency-groups]
+dev = [
+    "mypy (>=1.18.2,<2.0.0)",
+    "pytest (>=9.0.1,<10.0.0)",
+    "typer[testing] (>=0.20.0,<0.21.0)"
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.mypy]
+warn_unused_ignores = true
+warn_unused_configs = true
+mypy_path = ["src", "tests"]
+files = ["src", "tests"]
