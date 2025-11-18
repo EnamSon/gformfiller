@@ -69,5 +69,11 @@ EXAMPLES = {
         "expression": r"path\\to\\file",
         "matches": [r"Save to path\to\file", r"File: path\to\file.txt"],
         "no_matches": ["Save to path/to/file", "File: pathtofile"]
+    },
+
+    "case_insensitive_check": {
+        "expression": "PyThOn",
+        "matches": ["I love python", "PYTHON is great"],
+        "no_matches": ["java is better"]
     }
 }

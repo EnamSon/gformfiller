@@ -13,12 +13,6 @@ def test_literal_match(evaluator):
     assert evaluator.evaluate(node, "I love python programming") is True
     assert evaluator.evaluate(node, "I love java") is False
 
-def test_case_insensitivity(evaluator):
-    node = WordNode("Python")
-    # Should match "python", "PYTHON", "PyThOn"
-    assert evaluator.evaluate(node, "coding in python") is True
-    assert evaluator.evaluate(node, "CODING IN PYTHON") is True
-
 def test_quoted_string(evaluator):
     node = QuotedStringNode("data science")
     assert evaluator.evaluate(node, "Expert in data science") is True
