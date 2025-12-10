@@ -8,7 +8,7 @@ import gformfiller.infrastructure.dsl as dsl
 from gformfiller.infrastructure.dsl.examples import EXAMPLES
 
 # Fixture to flatten the EXAMPLES dictionary for easy pytest parameterization
-def get_match_params() -> List[pytest.param]:
+def get_match_params():
     """Prepares parameters for success and failure tests."""
     params = []
     for test_name, data in EXAMPLES.items():
@@ -27,7 +27,7 @@ def get_match_params() -> List[pytest.param]:
     return params
 
 # Fixture for syntax error cases
-def get_error_params() -> List[pytest.param]:
+def get_error_params():
     """Prepares expressions that are expected to cause a syntax error (Lexer or Parser)."""
     return [
         pytest.param("A & (B", id="PARSER-Unbalanced-Parens"),
