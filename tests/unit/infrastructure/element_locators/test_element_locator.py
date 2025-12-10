@@ -29,7 +29,7 @@ def locator(mock_context):
 # Test 1: Verify that find_element is called with the correct XPATH for various elements
 @pytest.mark.parametrize("element_enum, expected_xpath", [
     (GoogleFormElement.SUBMIT_BUTTON, "//div[@role='button' and @aria-label='Submit']"),
-    (GoogleFormElement.TEXT_INPUT, ".//input[@type='text' or @type='email' or @type='url' or @type='date'] | .//textarea"),
+    (GoogleFormElement.TEXT_INPUT, ".//input[@type='text' or @type='email' or @type='url'] | .//textarea"),
     (GoogleFormElement.QUESTION_DESCRIPTION, ".//div[@role='heading']/following-sibling::div[1]"),
     (GoogleFormElement.NEXT_BUTTON, "(//div[@role='list']/following-sibling::div[1]//div[@role='button' and not(@aria-label='Submit')])[2]")
 ])
