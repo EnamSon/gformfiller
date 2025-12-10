@@ -15,6 +15,7 @@ class ElementType(Enum):
     RADIO = auto()
     CHECKBOX = auto()
     TEXT_INPUT = auto()
+    DATE = auto()
     BUTTON = auto()
     SUBMIT_BUTTON = auto()
     NEXT_BUTTON = auto()
@@ -28,6 +29,9 @@ class ElementType(Enum):
     QUESTION_DESCRIPTION = auto()
     LIST = auto()
     NO_EMPTY_LIST = auto() # Used to check if a file has finished uploading
+    TIME = auto()
+    TIME_HOUR = auto()
+    TIME_MINUTE = auto()
 
 # 3. NamedTuple for Element Definition
 class Element(NamedTuple):
@@ -74,11 +78,16 @@ class GoogleFormElement(Enum):
         xpath=".//div[@role='radio'] | .//input[@type='radio']"
     )
 
-    # Text input field (short answer, paragraph, email, date)
+    # Text input field (short answer, paragraph, email)
     TEXT_INPUT = Element(
         type=ElementType.TEXT_INPUT,
         # Targets various text input types and the textarea element
-        xpath=".//input[@type='text' or @type='email' or @type='url' or @type='date'] | .//textarea"
+        xpath=".//input[@type='text' or @type='email' or @type='url'] | .//textarea"
+    )
+
+    DATE = Element(
+        type=ElementType.DATE,
+        xpath=".//input[@type='date']"
     )
 
     # Google Picker iframe (for file upload dialog)
@@ -148,4 +157,19 @@ class GoogleFormElement(Enum):
         type=ElementType.BUTTON,
         # If present, it is always the FIRST non-Submit button in the action bar.
         xpath="(//div[@role='list']/following-sibling::div[1]//div[@role='button' and not(@aria-label='Submit')])[1]"
+    )
+
+    TIME = Element(
+        type=ElementType.TIME,
+        xpath=".//div[.//input[@type='number' and @max='23'] and .//input[@type='number' and @max='59']]"
+    )
+
+    TIME_HOUR = Element(
+        type=ElementType.TIME_HOUR,
+        xpath=".//input[@type='number' and @max='23']"
+    )
+
+    TIME_MINUTE = Element(
+        type=ElementType.TIME_MINUTE,
+        xpath=".//input[@type='number' and @max='59']"
     )
