@@ -17,12 +17,10 @@ def test_base_structure_creation(fm, tmp_path):
 
 def test_profile_lifecycle(fm):
     fm.create_profile("test_user")
-    profile_names = [profile["name"] for profile in fm.list_profiles()]
-    assert "test_user" in profile_names
+    assert "test_user" in fm.list_profiles()
     
     fm.delete_profile("test_user")
-    profile_names = [profile["name"] for profile in fm.list_profiles()]
-    assert "test_user" not in profile_names
+    assert "test_user" not in fm.list_profiles()
 
 def test_filler_creation_and_db_log(fm):
     fm.create_filler("test_filler")

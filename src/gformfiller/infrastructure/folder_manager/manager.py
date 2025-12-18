@@ -46,14 +46,9 @@ class FolderManager:
 
         return res[0] if res else datetime.now().isoformat()
 
-    def list_profiles(self) -> List[Dict[str, str]]:
+    def list_profiles(self) -> List[str]:
 
-        return [
-            {
-                'name': p.name, 'created_at': self._get_profile_date(p.name)
-            }
-            for p in self.profiles_dir.iterdir() if p.is_dir()
-        ]
+        return [p.name for p in self.profiles_dir.iterdir() if p.is_dir()]
 
     def create_profile(self, profile_name: str):
         (self.profiles_dir / profile_name).mkdir(exist_ok=True)
@@ -78,7 +73,10 @@ class FolderManager:
         
         self._write_json(f_path / FORMDATA_FILE, {})
         self._write_json(f_path / CONFIG_FILE, {})
-        self._write_json(f_path / METADATA_FILE, {"created_at": datetime.now().isoformat()})
+        self._write_json(
+            f_path / METADATA_FILE,
+            {"created_at": datetime.now().isoformat(), "status": "pending"}
+        )
         (f_path / FILLER_LOG_FILE).touch()
         
         self.db_logger.log("CREATE", "FILLER", filler_name)
@@ -170,6 +168,42 @@ class FolderManager:
     def get_record_path(self, filler_name: str, record_type: str, filename: str) -> Path:
         sub_dir = PDFS_DIR if record_type == "pdfs" else SCREENSHOTS_DIR
         return self.fillers_dir / filler_name / RECORD_DIR / sub_dir / filename
+
+    # --- JSON FILES ---
+
+    def _get_all_filler_files(self, filename: str) -> Dict[str, Any]:
+        """
+        Generic helper to scan all fillers for a specific JSON file.
+        """
+        all_content = {}
+        if not self.fillers_dir.exists():
+            return {}
+
+        for filler_path in self.fillers_dir.iterdir():
+            if filler_path.is_dir():
+                filler_name = filler_path.name
+                target_file = filler_path / filename
+
+                if target_file.exists():
+                    try:
+                        with open(target_file, 'r', encoding='utf-8') as f:
+                            all_content[filler_name] = json.load(f)
+                    except Exception as e:
+                        logger.error(f"Error reading {filename} for {filler_name}: {e}")
+                        all_content[filler_name] = {"error": str(e)}
+        return all_content
+
+    def get_all_metadata(self) -> Dict[str, Any]:
+        """Returns metadata for all fillers (URL, status, profile used, etc.)."""
+        return self._get_all_filler_files(METADATA_FILE)
+
+    def get_all_configs(self) -> Dict[str, Any]:
+        """Returns specific configurations for all fillers."""
+        return self._get_all_filler_files(CONFIG_FILE)
+
+    def get_all_form_data(self) -> Dict[str, Any]:
+        """Returns form_data for all fillers"""
+        return self._get_all_filler_files(FORMDATA_FILE)
 
     # --- UTILS ---
 

@@ -6,6 +6,7 @@ from gformfiller.core.filler_worker import FillerWorker
 from gformfiller.api.profiles import router as profiles_router
 from gformfiller.api.fillers import router as fillers_router
 from gformfiller.api.system import router as system_router
+from gformfiller.api.inscriptions import router as inscriptions_routes
 from fastapi.middleware.cors import CORSMiddleware
 import logging
 
@@ -41,6 +42,7 @@ def create_app() -> FastAPI:
     app.include_router(profiles_router)
     app.include_router(fillers_router)
     app.include_router(system_router)
+    app.include_router(inscriptions_routes)
 
     return app
 

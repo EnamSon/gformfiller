@@ -7,17 +7,25 @@ from fastapi import (
     APIRouter, Request, HTTPException, status,
     Body, UploadFile, File, BackgroundTasks
 )
-
+from gformfiller.infrastructure.folder_manager.constants import METADATA_FILE
 router = APIRouter(prefix="/gformfiller/fillers", tags=["Fillers"])
 logger = logging.getLogger(__name__)
 
 # --- Filler Lifecycle ---
 
-@router.get("/", response_model=List[str])
+@router.get("/", response_model=List[Dict[str, str]])
 async def list_fillers(request: Request):
     """List all available fillers."""
     fm = request.app.state.folder_manager
-    return fm.list_fillers()
+    fillers_name = fm.list_fillers()
+    fillers = []
+    for filler_name in fillers_name:
+        metadata = fm.get_filler_file_content(filler_name, METADATA_FILE)
+        fillers.append({
+            "name": filler_name,
+            "date": metadata.get("created_at", "")
+        })
+    return fillers
 
 @router.post("/{filler_name}/", status_code=status.HTTP_201_CREATED)
 async def create_filler(request: Request, filler_name: str):
