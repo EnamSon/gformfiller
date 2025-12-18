@@ -30,7 +30,7 @@ def match(text: str, expression: str, ignore_case: bool = True) -> Optional[bool
                         occurs.
     """
     if not expression:
-        return False
+        return True
         
     try:
         # 1. Pre-processing: Case normalization
