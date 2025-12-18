@@ -9,7 +9,16 @@ logger = logging.getLogger(__name__)
 async def list_profiles(request: Request):
     """List all available browser profiles."""
     fm = request.app.state.folder_manager
-    return fm.list_profiles()
+    profile_names = fm.list_profiles()
+    profiles = []
+    for profile_name in profile_names:
+        profiles.append(
+            {
+                "name": profile_name,
+                "created_at": fm._get_profile_date(profile_name)
+            }
+        )
+    return profiles
 
 @router.post("/", status_code=status.HTTP_201_CREATED)
 async def create_profile(request: Request, profile_name: str = Query(..., description="Name of the new profile")):
