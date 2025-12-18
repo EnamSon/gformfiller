@@ -1,7 +1,7 @@
 [project]
 name = "gformfiller"
 version = "0.1.0"
-description = ""
+description = "Google Form Filler"
 authors = [
     {name = "EnamSon",email = "junior.enama@facsciences-uy1.cm"}
 ]
@@ -18,14 +18,15 @@ dependencies = [
     "google-genai (>=1.55.0,<2.0.0)",
     "anthropic (>=0.75.0,<0.76.0)",
     "fastapi (>=0.124.4,<0.125.0)",
-    "httpx (>=0.28.1,<0.29.0)",
-    "pytest-mock (>=3.15.1,<4.0.0)",
     "uvicorn (>=0.38.0,<0.39.0)",
     "python-multipart (>=0.0.21,<0.0.22)"
 ]
 
 [tool.poetry]
 packages = [{include = "gformfiller", from = "src"}]
+
+[tool.poetry.scripts]
+gformfiller = "gformfiller.main:run"
 
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
@@ -35,7 +36,9 @@ build-backend = "poetry.core.masonry.api"
 dev = [
     "mypy (>=1.18.2,<2.0.0)",
     "pytest (>=9.0.1,<10.0.0)",
-    "typer[testing] (>=0.20.0,<0.21.0)"
+    "typer[testing] (>=0.20.0,<0.21.0)",
+    "httpx (>=0.28.1,<0.29.0)",
+    "pytest-mock (>=3.15.1,<4.0.0)"
 ]
 
 [tool.pytest.ini_options]

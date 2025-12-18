@@ -6,6 +6,7 @@ from gformfiller.core.filler_worker import FillerWorker
 from gformfiller.api.profiles import router as profiles_router
 from gformfiller.api.fillers import router as fillers_router
 from gformfiller.api.system import router as system_router
+from fastapi.middleware.cors import CORSMiddleware
 import logging
 
 
@@ -43,4 +44,25 @@ def create_app() -> FastAPI:
 
     return app
 
-app = create_app()
+def run():
+    import argparse
+    import uvicorn
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--host", type=str, default="127.0.0.1")
+    parser.add_argument("--port", type=int, default=8000)
+
+    args = parser.parse_args()
+
+    app = create_app()
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+    uvicorn.run(app, host=args.host, port=args.port)
+
+if __name__ == "__main__":
+    run()

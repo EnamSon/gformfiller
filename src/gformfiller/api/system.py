@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 
 # --- Configuration par défaut ---
 
-@router.get("/default", response_model=Dict[str, Any])
+@router.get("/default/", response_model=Dict[str, Any])
 async def get_default_config(request: Request):
     """
     Retrieve the global default configuration used for new fillers.
@@ -21,7 +21,7 @@ async def get_default_config(request: Request):
         logger.error(f"Failed to load default config: {e}")
         raise HTTPException(status_code=500, detail="Error loading default configuration.")
 
-@router.put("/default")
+@router.put("/default/")
 async def update_default_config(request: Request, data: Dict[str, Any] = Body(...)):
     """
     Update the global default configuration (default.json).
@@ -36,7 +36,7 @@ async def update_default_config(request: Request, data: Dict[str, Any] = Body(..
 
 # --- Journaux système (Logs) ---
 
-@router.get("/log", response_model=List[Dict[str, Any]])
+@router.get("/log/", response_model=List[Dict[str, Any]])
 async def get_system_logs(request: Request, limit: int = 100):
     """
     Fetch the latest logs from the SQLite log database.

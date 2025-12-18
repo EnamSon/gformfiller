@@ -77,7 +77,7 @@ async def update_filler_file(
     fm = request.app.state.folder_manager
     
     filler_path = fm.fillers_dir / filler_name
-    if not filler_path.exist():
+    if not filler_path.exists():
         logger.warning("Filler {filler_name} not found. Creating...")
         try:
             fm.create_filler(filler_name)
@@ -132,7 +132,7 @@ async def upload_filler_files(request: Request, filler_name: str, files: List[Up
 
 # --- Execution Endpoint (Runner) ---
 
-@router.post("/{filler_name}/run", status_code=status.HTTP_202_ACCEPTED)
+@router.post("/{filler_name}/run/", status_code=status.HTTP_202_ACCEPTED)
 async def run_filler(
     filler_name: str, 
     request: Request,
