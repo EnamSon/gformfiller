@@ -186,3 +186,17 @@ ou
 ```bash
 curl -X POST "http://localhost:8000/gformfiller/fillers/MyForm/metadata/"
 ```
+
+### Default
+
+```bash
+curl -X PUT "http://localhost:8000/gformfiller/default/" \
+    -H "Content-Type: application/json" \
+    -d '{
+        "profile": "MyProfile",
+        "headless": false,
+        "remote": false,
+        "wait_time": 5.0,
+        "submit": true
+    }'
+```

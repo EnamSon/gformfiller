@@ -4,11 +4,11 @@ import json
 import logging
 from typing import Any, Dict
 import tomllib
+import tomli_w
 from .folder_manager import FolderManager
 from .folder_manager.constants import DEFAULT_TOML, CONFIG_FILE
 
 from gformfiller.domain.schemas.config import FillerConfig
-
 
 logger = logging.getLogger(__name__)
 
@@ -22,10 +22,16 @@ class ConfigManager:
 
     def get_default_config(self) -> Dict[str, Any]:
         """Loads the global configuration from .gformfiller/default.toml."""
-        path = self._fm.root / DEFAULT_TOML
+        path = self._fm.default_path
         if not path.exists():
             logger.warning(f"Global config {DEFAULT_TOML} not found. Using empty defaults.")
-            return {}
+            return {
+                "profile": "default",
+                "headless": False,
+                "remote": False,
+                "wait_time": 5.0,
+                "submit": True
+            }
         
         try:
             with open(path, "rb") as f:
@@ -33,6 +39,20 @@ class ConfigManager:
         except Exception as e:
             logger.error(f"Error reading {DEFAULT_TOML}: {e}")
             return {}
+
+    def update_default_config(self, data: Dict[str, Any]):
+        """Update default config."""
+        if not self._fm.default_path.exists():
+            logger.warning(f"{DEFAULT_TOML} not found. Creating...")
+            self._fm.default_path.touch()
+
+        current_config = self.get_default_config()
+        for key, val in data.items():
+            current_config[key] = val
+    
+        with open(self._fm.default_path, "wb") as f:
+            tomli_w.dump({"default": current_config}, f)
+
 
     def get_filler_config(self, filler_name: str) -> Dict[str, Any]:
         """Loads the specific config.json for a given filler."""

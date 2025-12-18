@@ -2,6 +2,7 @@
 
 import logging
 import os
+import subprocess
 from typing import Dict, Any, Optional
 
 from gformfiller.infrastructure.folder_manager import FolderManager
@@ -13,6 +14,14 @@ from gformfiller.domain.ai import create_ai_client
 
 logger = logging.getLogger(__name__)
 
+
+def _launch_chrome_remote_debug(user_data_dir: str, binary_loc: str, port: int = 9222):
+    args = [
+        binary_loc,
+        f"--remote-debugging-port={port}",
+        f"--user-data-dir={user_data_dir}"
+    ]
+    subprocess.Popen(args)
 
 class FillerWorker:
     def __init__(self, folder_manager: FolderManager, config_manager: ConfigManager):
@@ -72,7 +81,8 @@ class FillerWorker:
                 form_data=form_data,
                 screenshots_dir=str(self.fm.fillers_dir / filler_name / "record" / "screenshots"),
                 output_dir=str(self.fm.fillers_dir / filler_name / "record" / "pdfs"),
-                submit=config.submit
+                submit=config.submit,
+                max_retries=config.max_retries
             )
 
             # 5. Exécution

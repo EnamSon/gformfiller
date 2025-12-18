@@ -1,11 +1,11 @@
 from fastapi import APIRouter, Request, HTTPException, status, Query
-from typing import List
+from typing import List, Dict
 import logging
 
 router = APIRouter(prefix="/gformfiller/profiles", tags=["Profiles"])
 logger = logging.getLogger(__name__)
 
-@router.get("/", response_model=List[str])
+@router.get("/", response_model=List[Dict[str, str]])
 async def list_profiles(request: Request):
     """List all available browser profiles."""
     fm = request.app.state.folder_manager

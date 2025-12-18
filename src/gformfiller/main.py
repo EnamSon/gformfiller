@@ -21,7 +21,7 @@ def create_app() -> FastAPI:
     handler.setFormatter(formatter)
 
     logger.addHandler(handler)
-    app = FastAPI(title="GFormFiller API")
+    app = FastAPI(title="GFormFiller API", redirect_slashes=True)
 
     # 1. Initialize Infrastructure
     folder_manager = FolderManager()

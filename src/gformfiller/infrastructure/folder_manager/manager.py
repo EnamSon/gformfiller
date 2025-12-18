@@ -18,6 +18,7 @@ class FolderManager:
         self.profiles_dir = self.root / PROFILES_DIR
         self.fillers_dir = self.root / FILLERS_DIR
         self.db_path = self.root / GLOBAL_LOG_DB
+        self.default_path = self.root / DEFAULT_TOML
         self._ensure_base_structure()
         self.db_logger = ActionLogger(self.db_path)
 
@@ -31,8 +32,28 @@ class FolderManager:
 
     # --- PROFILES ---
 
-    def list_profiles(self) -> List[str]:
-        return [p.name for p in self.profiles_dir.iterdir() if p.is_dir()]
+    def _get_profile_date(self, profile_name) -> str:
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute(
+            """SELECT timestamp FROM system_logs
+            WHERE category == 'PROFILE' and action == 'CREATE' and target == ?""",
+            (f"{profile_name}/",)
+        )
+
+        res = cursor.fetchone()
+
+        return res[0] if res else datetime.now().isoformat()
+
+    def list_profiles(self) -> List[Dict[str, str]]:
+
+        return [
+            {
+                'name': p.name, 'created_at': self._get_profile_date(p.name)
+            }
+            for p in self.profiles_dir.iterdir() if p.is_dir()
+        ]
 
     def create_profile(self, profile_name: str):
         (self.profiles_dir / profile_name).mkdir(exist_ok=True)
