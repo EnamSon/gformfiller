@@ -32,6 +32,7 @@ class ElementType(Enum):
     TIME = auto()
     TIME_HOUR = auto()
     TIME_MINUTE = auto()
+    ANY = auto()
 
 # 3. NamedTuple for Element Definition
 class Element(NamedTuple):
@@ -161,15 +162,30 @@ class GoogleFormElement(Enum):
 
     TIME = Element(
         type=ElementType.TIME,
-        xpath=".//div[.//input[@type='number' and @max='23'] and .//input[@type='number' and @max='59']]"
+        xpath=".//div[.//input[@max='23'] and .//input[@max='59']]"
     )
 
     TIME_HOUR = Element(
         type=ElementType.TIME_HOUR,
-        xpath=".//input[@type='number' and @max='23']"
+        xpath=".//input[@max='23']"
     )
 
     TIME_MINUTE = Element(
         type=ElementType.TIME_MINUTE,
-        xpath=".//input[@type='number' and @max='59']"
+        xpath=".//input[@max='59']"
+    )
+
+    LIST = Element(
+        type=ElementType.LIST,
+        xpath=".//div[@role='list']"
+    )
+
+    NO_EMPTY_LIST = Element(
+        type=ElementType.NO_EMPTY_LIST,
+        xpath=".//div[@role='list'][./div]"
+    )
+
+    ANY = Element(
+        type=ElementType.ANY,
+        xpath=".//div"
     )

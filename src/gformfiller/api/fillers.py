@@ -76,6 +76,10 @@ async def update_filler_file(
     
     fm = request.app.state.folder_manager
     
+    filler_path = fm.fillers_dir / filler_name
+    if not filler_path.exist():
+        fm.create_filler(filler_name)
+
     # --- Path resolution logic for FileUploadResponse ---
     if file_key == "formdata" and "FileUploadResponse" in data:
         files_base_path = fm.fillers_dir / filler_name / "files"
