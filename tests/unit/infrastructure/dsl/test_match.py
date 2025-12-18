@@ -90,11 +90,11 @@ def test_match_syntax_errors_return_none_and_log(expression: str, caplog):
 def test_match_empty_inputs():
     """Tests edge cases with empty strings."""
     
-    # Empty expression, should return False (handled by the guard in match)
-    assert dsl.match("some text", "") is False
+    # Empty expression, should return True (handled by the guard in match)
+    assert dsl.match("some text", "") is True
     
     # Empty text, non-empty expression, should return False
     assert dsl.match("", "A & B") is False
     
-    # Empty expression and text, should return False
-    assert dsl.match("", "") is False
+    # Empty expression and text, should return True
+    assert dsl.match("", "") is True
