@@ -179,12 +179,12 @@ curl -X POST "http://localhost:8000/gformfiller/fillers/MyForm/run/"
 ### Step 8: Check status (Optional)
 
 ```bash
-curl -X POST "http://localhost:8000/gformfiller/fillers/MyForm/status"
+curl "http://localhost:8000/gformfiller/fillers/MyForm/status"
 ```
 ou
 
 ```bash
-curl -X POST "http://localhost:8000/gformfiller/fillers/MyForm/metadata/"
+curl "http://localhost:8000/gformfiller/fillers/MyForm/metadata/"
 ```
 
 ### Default

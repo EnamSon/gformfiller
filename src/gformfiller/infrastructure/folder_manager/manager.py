@@ -91,10 +91,15 @@ class FolderManager:
 
     def get_filler_file_content(self, filler_name: str, file_key: str) -> Any:
         filename = self._map_key_to_file(file_key)
-        path = self.fillers_dir / filler_name / filename
+        filler_path = self.fillers_dir / filler_name
+
+        if not filler_path.exists():
+            self.create_filler(filler_name)
+
+        path = filler_path / filename
         return self._read_json(path)
 
-    def update_filler_file_content(self, filler_name: str, file_key: str, data: Any, partial: bool = False):
+    def update_filler_file_content(self, filler_name: str, file_key: str, data: Any, partial: bool = True):
         filename = self._map_key_to_file(file_key)
         path = self.fillers_dir / filler_name / filename
         
