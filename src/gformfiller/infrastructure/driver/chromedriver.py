@@ -30,6 +30,7 @@ def get_chromedriver(
     binary_location: str | None = None,
     user_data_dir: str | None = None,
     headless: bool = False,
+    port: int = 0,
     remote: bool = False,
     remote_host: str = DEFAULT_REMOTE_HOST,
     remote_port: int = DEFAULT_REMOTE_PORT,
@@ -42,6 +43,7 @@ def get_chromedriver(
     page_load_timeout: int = DEFAULT_PAGE_LOAD_TIMEOUT,
     script_timeout: int = DEFAULT_SCRIPT_TIMEOUT,
     implicit_wait: int = 0,
+    window_size: str | None = None
 ) -> ChromeDriver:
     """
     Create and configure a chromedriver instance
@@ -86,9 +88,10 @@ def get_chromedriver(
             no_sandbox=no_sandbox,
             disable_gpu=disable_gpu,
             disable_dev_shm=disable_dev_shm,
-            page_load_strategy=page_load_strategy
+            page_load_strategy=page_load_strategy,
+            window_size=window_size
         )
-        service = _get_chromeservice(driver_path)
+        service = _get_chromeservice(driver_path, port)
         chromedriver = webdriver.Chrome(options=options, service=service)
         configure_timeouts(chromedriver, page_load_timeout, script_timeout, implicit_wait)
 
@@ -116,7 +119,8 @@ def _get_chromeoptions(
     no_sandbox: bool,
     disable_gpu: bool,
     disable_dev_shm: bool,
-    page_load_strategy: str
+    page_load_strategy: str,
+    window_size: str | None
 ) -> ChromeOptions:
     """Configure chrome options"""
 
@@ -162,6 +166,8 @@ def _get_chromeoptions(
     if disable_dev_shm:
         options.add_argument("--disable-dev-shm-usage")
 
+    if window_size:
+        options.add_argument(f'--window-size="{window_size}"')
     # Page load strategy
     options.page_load_strategy = page_load_strategy
     
@@ -179,13 +185,14 @@ def _get_chromeoptions(
 
 
 def _get_chromeservice(
-    driver_path: str
+    driver_path: str,
+    port: int
 ) -> ChromeService:
 
     if not Path(driver_path).exists():
         raise DriverNotFoundError("chrome", driver_path)
 
-    return ChromeService(executable_path=driver_path)
+    return ChromeService(executable_path=driver_path, port=port)
 
 def quit_chromedriver(chromedriver: ChromeDriver | None = None):
     quit_webdriver(chromedriver)

@@ -3,12 +3,15 @@
 import logging
 import os
 import subprocess
+import socket
+import random
+from datetime import datetime
 from typing import Dict, Any, Optional
 
 from gformfiller.infrastructure.folder_manager import FolderManager
 from gformfiller.infrastructure.config_manager import ConfigManager
+from gformfiller.infrastructure.notif_manager import NotifManager
 from gformfiller.infrastructure.driver import get_chromedriver, quit_chromedriver
-
 from gformfiller.domain.form_filler import FormFiller
 from gformfiller.domain.ai import create_ai_client
 
@@ -23,10 +26,12 @@ def _launch_chrome_remote_debug(user_data_dir: str, binary_loc: str, port: int =
     ]
     subprocess.Popen(args)
 
+
 class FillerWorker:
-    def __init__(self, folder_manager: FolderManager, config_manager: ConfigManager):
+    def __init__(self, folder_manager: FolderManager, config_manager: ConfigManager, notif_manager: NotifManager):
         self.fm = folder_manager
         self.cm = config_manager
+        self.nm = notif_manager
 
     def is_profile_locked(self, profile_name: str) -> bool:
         lock_file = self.fm.profiles_dir / profile_name / ".lock"
@@ -66,7 +71,11 @@ class FillerWorker:
             user_data_dir=profile_path,
             headless=config.headless,
             remote=config.remote,
-            no_sandbox=True
+            no_sandbox=True,
+            disable_images=True,
+            disable_gpu=True,
+            disable_dev_shm=True,
+            window_size="1920,1080"
         )
 
         try:
@@ -90,17 +99,19 @@ class FillerWorker:
             
             # Mise à jour de l'état
             metadata["status"] = "completed" if success else "failed"
-            self.fm.update_filler_file_content(filler_name, "metadata", metadata)
-            
+
             return success
 
         except Exception as e:
             logger.exception(f"Erreur critique lors de l'exécution de '{filler_name}': {e}")
             metadata["status"] = "error"
-            self.fm.update_filler_file_content(filler_name, "metadata", metadata)
+
             return False
             
         finally:
+            metadata["last_access"] = datetime.now().isoformat()
+            self.fm.update_filler_file_content(filler_name, "metadata", metadata)
+            self.nm.add_notification(filler_name, metadata["status"])
             quit_chromedriver(driver)
             if lock_file.exists():
                 lock_file.unlink()

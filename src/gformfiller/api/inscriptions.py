@@ -1,7 +1,7 @@
 # gformfiller/api/inscriptions.py
 
 import logging
-import os
+import time
 import uuid
 import asyncio
 from typing import Dict, Any, List, Optional
@@ -164,6 +164,7 @@ async def process_queue(request: Request, url: str, filler_names: List[str]):
             asyncio.create_task(asyncio.to_thread(worker.run, filler_name=c_name))
             
             logger.info(f"Profil {free_profile} attribué à {c_name}. Reste en file : {len(queue)}")
+            time.sleep(1.0)
         else:
             # Aucun profil libre, on attend 5 secondes avant de réessayer
             await asyncio.sleep(5)
