@@ -9,7 +9,6 @@ from fastapi import (
     APIRouter, Request, HTTPException,
     Body, UploadFile, File, BackgroundTasks, Form
 )
-from gformfiller.infrastructure.notif_manager import NotifManager
 
 
 router = APIRouter(prefix="/gformfiller/inscriptions", tags=["Inscriptions"])
