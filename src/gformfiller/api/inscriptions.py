@@ -1,6 +1,7 @@
 # gformfiller/api/inscriptions.py
 
 import logging
+import os
 import uuid
 import asyncio
 from typing import Dict, Any, List, Optional
@@ -8,6 +9,8 @@ from fastapi import (
     APIRouter, Request, HTTPException,
     Body, UploadFile, File, BackgroundTasks, Form
 )
+from gformfiller.infrastructure.notif_manager import NotifManager
+
 
 router = APIRouter(prefix="/gformfiller/inscriptions", tags=["Inscriptions"])
 logger = logging.getLogger(__name__)
@@ -213,3 +216,76 @@ async def status(request: Request):
         "failed": failed,
         "completed": completed
     }
+
+# /gformfiller/inscriptions/pending_list
+@router.get("/pending_list/", response_model=List[Dict[str, str]])
+async def pending_list(request: Request):
+    fm = request.app.state.folder_manager
+    all_metadata = fm.get_all_metadata()
+    fm = request.app.state.folder_manager
+    all_form_data = fm.get_all_form_data()
+
+    pending_list = []
+    for filler_name in all_form_data:
+        full_name = ""
+        try:
+            full_name = all_form_data[filler_name]["TextResponse"].get(
+                "nom < complet", filler_name.replace("_", " ")
+            )
+        except Exception as e:
+            logger.error(f"Can't extract the fullname for reason: {e}")
+
+        phone = ""
+        try:
+            phone = all_form_data[filler_name]["TextResponse"].get("phone", "")
+        except Exception as e:
+            logger.error(f"Can't extract phone number for reason: {e}")
+
+        status = all_metadata[filler_name].get("status", "unknown")
+        date = all_metadata[filler_name].get("created_at", "")
+
+        if status == "pending":
+            pending_list.append({
+                "id": filler_name,
+                "full_name": full_name,
+                "phone": phone,
+                "status": status,
+                "date": date
+            })
+
+    return pending_list
+
+
+@router.get("/details/")
+async def get_candidate_details(request: Request, filler_name: str):
+    fm = request.app.state.folder_manager
+    
+    if filler_name not in fm.list_fillers():
+        raise HTTPException(status_code=404, detail="Candidat non trouvé")
+        
+    try:
+        # On récupère le formdata.json qui contient toutes les infos du register
+        form_data = fm.get_filler_file_content(filler_name, "formdata")
+        
+        # On reconstruit l'objet plat pour le frontend (inversion du mapping)
+        text_resp = form_data.get("TextResponse", {})
+        radio_resp = form_data.get("RadioResponse", {})
+        
+        return {
+            "nom": text_resp.get("nom"),
+            "prenom": text_resp.get("prénom | prenom"),
+            "ville": text_resp.get("ville"),
+            "nationalite": text_resp.get("nationalit"),
+            "pays": text_resp.get("pays"),
+            "email": text_resp.get("courriel | email | e-mail"),
+            "cni_number": text_resp.get("cni | passport | passeport"),
+            "langue": text_resp.get("langue"),
+            "phone": text_resp.get("phone"),
+            "birthdate": form_data.get("DateResponse", {}).get(""),
+            "sexe": radio_resp.get("sexe | genre"),
+            # On renvoie les noms des fichiers pour le front
+            # "photo_filename": os.path.basename(form_data.get("FileUploadResponse", {}).get("photo", "")),
+            # "doc_filename": os.path.basename(form_data.get("FileUploadResponse", {}).get("cni | (document < identification) | passport | passeport", ""))
+        }   
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Erreur de lecture : {str(e)}")
