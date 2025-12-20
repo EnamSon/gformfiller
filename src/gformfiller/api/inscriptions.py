@@ -1,11 +1,12 @@
 # gformfiller/api/inscriptions.py
 
 import logging
-import os
+import uuid
+import asyncio
 from typing import Dict, Any, List, Optional
 from fastapi import (
     APIRouter, Request, HTTPException,
-    Body, UploadFile, File, BackgroundTasks
+    Body, UploadFile, File, BackgroundTasks, Form
 )
 
 router = APIRouter(prefix="/gformfiller/inscriptions", tags=["Inscriptions"])
@@ -48,6 +49,138 @@ async def list_inscriptions(request: Request):
         })
 
     return infos
+
+
+@router.post("/register/")
+async def register_candidate(
+    request: Request,
+    nom: str = Form(...),
+    prenom: str = Form(...),
+    ville: str = Form(...),
+    nationalite: str = Form(...),
+    pays: str = Form(...),
+    email: str = Form(...),
+    cni_number: str = Form(...),
+    langue: str = Form(...),
+    phone: str = Form(...),
+    birthdate: str = Form(...),
+    sexe: str = Form(...),
+    photo: UploadFile = File(...),
+    document: UploadFile = File(...)
+):
+    fm = request.app.state.folder_manager
+    
+    filler_name = f"cand_{uuid.uuid4().hex[:8]}"
+    fm.create_filler(filler_name)
+
+    files_dir = fm.fillers_dir / filler_name / "files"
+    photo_path = files_dir / photo.filename
+    doc_path = files_dir / document.filename
+    
+    with open(photo_path, "wb") as f: f.write(await photo.read())
+    with open(doc_path, "wb") as f: f.write(await document.read())
+
+    form_data = {
+        "TextResponse": {
+            "nom < complet": f"{nom} {prenom}",
+            "prénom | prenom": prenom,
+            "nom": nom,
+            "ville": ville,
+            "nationalit": nationalite,
+            "pays": pays,
+            "motif": "Immigration Canada",
+            "courriel | email | e-mail": email,
+            "cni | passport | passeport": cni_number,
+            "langue": langue,
+            "phone": phone
+        },
+        "DateResponse": { "": birthdate },
+        "CheckboxResponse": { "": "" },
+        "RadioResponse": {
+            "handicap | maladie": "aucun",
+            "sexe | genre": sexe
+        },
+        "FileUploadResponse": {
+            "photo": str(photo_path),
+            "cni | (document < identification) | passport | passeport": str(doc_path)
+        }
+    }
+    fm.update_filler_file_content(filler_name, "formdata", form_data)
+
+    config_data = {
+        "headless": True,
+        "remote": False,
+        "wait_time": 5.0,
+        "submit": True
+    }
+    fm.update_filler_file_content(filler_name, "config", config_data)
+
+    return {
+        "filler_name": filler_name,
+    }
+
+
+async def process_queue(request: Request, url: str, filler_names: List[str]):
+    fm = request.app.state.folder_manager
+    worker = request.app.state.automation_worker
+    
+    # 1. Trier les fillers par date de création (created_at dans metadata)
+    detailed_fillers = []
+    for name in filler_names:
+        meta = fm.get_filler_file_content(name, "metadata")
+        detailed_fillers.append({"name": name, "created_at": meta.get("created_at", "")})
+    
+    # Tri ascendant (le plus ancien en premier)
+    queue = sorted(detailed_fillers, key=lambda x: x["created_at"])
+    
+    while queue:
+        # 2. Chercher un profil réellement libre
+        all_profiles = fm.list_profiles()
+        free_profile = None
+        
+        for p in all_profiles:
+            lock_path = fm.profiles_dir / p / ".lock"
+            if not lock_path.exists():
+                free_profile = p
+                break
+        
+        if free_profile:
+            candidate = queue.pop(0) # On récupère le plus ancien
+            c_name = candidate["name"]
+            
+            # 3. Attribuer le profil et l'URL au dernier moment
+            config = fm.get_filler_file_content(c_name, "config")
+            config["profile"] = free_profile
+            fm.update_filler_file_content(c_name, "config", config)
+            
+            meta = fm.get_filler_file_content(c_name, "metadata")
+            meta["url"] = url
+            fm.update_filler_file_content(c_name, "metadata", meta)
+
+            # 4. Lancer le worker (le worker doit créer le .lock au début du run et le supprimer à la fin)
+            # On utilise asyncio.to_thread pour ne pas bloquer la boucle d'événements
+            asyncio.create_task(asyncio.to_thread(worker.run, filler_name=c_name))
+            
+            logger.info(f"Profil {free_profile} attribué à {c_name}. Reste en file : {len(queue)}")
+        else:
+            # Aucun profil libre, on attend 5 secondes avant de réessayer
+            await asyncio.sleep(5)
+
+
+@router.post("/run/")
+async def run_inscriptions(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    url: str = Form(...),
+    filler_names: List[str] = Form(...)
+):
+    # On lance le gestionnaire de file d'attente en arrière-plan
+    background_tasks.add_task(process_queue, request, url, filler_names)
+    
+    return {
+        "message": f"File d'attente activée pour {len(filler_names)} fillers.",
+        "status": "processing_queue"
+    }
 
 
 @router.get("/pending/count/", response_model=int)

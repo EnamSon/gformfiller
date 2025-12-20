@@ -88,7 +88,7 @@ async def update_filler_file(
     
     filler_path = fm.fillers_dir / filler_name
     if not filler_path.exists():
-        logger.warning("Filler {filler_name} not found. Creating...")
+        logger.warning(f"Filler {filler_name} not found. Creating...")
         try:
             fm.create_filler(filler_name)
         except Exception as e:
