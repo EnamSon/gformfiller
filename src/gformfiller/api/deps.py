@@ -14,4 +14,4 @@ async def get_current_user(request: Request, creds: HTTPAuthorizationCredentials
     if not user:
         logger.error("Unauthorized access attempt with invalid token.")
         raise HTTPException(status_code=403, detail="Invalid session or token.")
-    return user["api_key"]
+    return user["username"]

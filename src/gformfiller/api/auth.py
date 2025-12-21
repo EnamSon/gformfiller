@@ -1,7 +1,10 @@
 # gformfiller/api/auth.py
 
 from .deps import get_current_user
-from fastapi import APIRouter, Request, HTTPException, Form, status, Depends
+from fastapi import (
+    APIRouter, Request, HTTPException, Form, status, Depends,Security
+)
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from gformfiller.infrastructure.folder_manager.constants import USERS_DB
 import logging
 import sqlite3
@@ -26,7 +29,7 @@ async def signup(request: Request, username: str = Form(...), password: str = Fo
     except Exception as e:
         logger.error(f"Failed to init workspace for {username}: {e}")
 
-    return {"message": "User created successfully", "api_key": api_key}
+    return {"message": "User created successfully", "access_token": api_key}
 
 @router.post("/signin/")
 async def signin(request: Request, username: str = Form(...), password: str = Form(...)):
@@ -46,18 +49,8 @@ async def signin(request: Request, username: str = Form(...), password: str = Fo
         "username": username
     }
 
-@router.post("/me/")
-async def get_info(request: Request, current_user: str = Depends(get_current_user)):
-    fm = request.app.state.folder_manager
-    db_path = fm.users / USERS_DB
-    with sqlite3.connect(db_path) as conn:
-            conn.row_factory = sqlite3.Row
-            username = conn.execute("SELECT username FROM users WHERE api_key = ?", (current_user,)).fetchone()
-            return {
-                "username": username
-            }
-
-    raise HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Invalid access token"
-    )
+@router.get("/me/")
+async def get_me(request: Request, current_user: str = Depends(get_current_user)):
+    return {
+        'username': "UserName"
+    }
