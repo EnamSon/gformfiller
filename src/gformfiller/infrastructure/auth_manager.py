@@ -65,4 +65,4 @@ class AuthManager:
         """Retrieve username associated with an API key."""
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
-            return conn.execute("SELECT username, api_key, FROM users WHERE api_key = ?", (token,)).fetchone()
+            return conn.execute("SELECT username FROM users WHERE api_key = ?", (token,)).fetchone()
