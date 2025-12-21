@@ -8,12 +8,22 @@ import random
 from datetime import datetime
 from typing import Dict, Any, Optional
 
+from .constants import Status
 from gformfiller.infrastructure.folder_manager import FolderManager
 from gformfiller.infrastructure.config_manager import ConfigManager
 from gformfiller.infrastructure.notif_manager import NotifManager
 from gformfiller.infrastructure.driver import get_chromedriver, quit_chromedriver
 from gformfiller.domain.form_filler import FormFiller
 from gformfiller.domain.ai import create_ai_client
+from gformfiller.infrastructure.folder_manager.constants import (
+    LOCK_FILE,
+    FileKeys,
+    CHROMEDRIVER_DIR,
+    CHROME_BIN_DIR,
+    RECORD_SUBDIR,
+    SCREENSHOTS_SUBDIR,
+    PDFS_SUBDIR
+)
 
 logger = logging.getLogger(__name__)
 
@@ -34,32 +44,33 @@ class FillerWorker:
         self.nm = notif_manager
 
     def is_profile_locked(self, profile_name: str) -> bool:
-        lock_file = self.fm.profiles_dir / profile_name / ".lock"
+        lock_file = self.fm.profiles_dir / profile_name / LOCK_FILE
         return lock_file.exists()
 
-    def run(self, filler_name: str, form_data: Optional[Dict[str, Any]] = None) -> bool:
+    def run(self, user_id: str, filler_name: str, form_data: Optional[Dict[str, Any]] = None) -> bool:
         """
         Exécute le cycle d'automatisation.
         :param filler_name: Nom du filler cible.
         :param form_data: Données de formulaire optionnelles (écrase le contenu de formdata.json).
         """
         # 1. Résolution de la configuration et des métadonnées
-        config = self.cm.get_resolved_config(filler_name)
-        metadata = self.fm.get_filler_file_content(filler_name, "metadata")
+        config = self.cm.get_resolved_config(user_id, filler_name)
+        metadata = self.fm.get_filler_file_content(user_id, filler_name, FileKeys.METADATA)
         
         # Si form_data n'est pas passé en paramètre, on le charge depuis le fichier local
         if form_data is None:
-            form_data = self.fm.get_filler_file_content(filler_name, "formdata")
+            form_data = self.fm.get_filler_file_content(user_id, filler_name, FileKeys.FORMDATA)
 
         if not metadata.get("url"):
             logger.error(f"URL absente pour le filler: {filler_name}")
             return False
 
         # 2. Préparation du Driver
-        driver_path = str(self.fm.root / "chromedriver" / "chromedriver")
-        binary_loc = str(self.fm.root / "chrome-testing" / "chrome")
+        user_paths = self.fm.get_user_paths(user_id)
+        driver_path = str(self.fm.root / CHROMEDRIVER_DIR / "chromedriver")
+        binary_loc = str(self.fm.root / CHROME_BIN_DIR / "chrome")
         profile_path = str(self.fm.profiles_dir / config.profile)
-        lock_file = self.fm.profiles_dir / config.profile / ".lock"
+        lock_file = self.fm.profiles_dir / config.profile / LOCK_FILE
 
         if self.is_profile_locked(config.profile):
             logger.error(f"Profile {config.profile} is locked. Another instance is running.")
@@ -85,11 +96,12 @@ class FillerWorker:
             ai_client = None
             driver.get(metadata["url"])
             # 4. Initialisation du moteur FormFiller
+            filler_paths = self.fm.get_filler_paths(user_id, filler_name)
             filler_engine = FormFiller(
                 driver=driver,
                 form_data=form_data,
-                screenshots_dir=str(self.fm.fillers_dir / filler_name / "record" / "screenshots"),
-                output_dir=str(self.fm.fillers_dir / filler_name / "record" / "pdfs"),
+                screenshots_dir=str(filler_paths[RECORD_SUBDIR] / SCREENSHOTS_SUBDIR),
+                output_dir=str(filler_paths[RECORD_SUBDIR] / PDFS_SUBDIR),
                 submit=config.submit,
                 max_retries=config.max_retries
             )
@@ -98,20 +110,20 @@ class FillerWorker:
             success = filler_engine.run()
             
             # Mise à jour de l'état
-            metadata["status"] = "completed" if success else "failed"
+            metadata["status"] = Status.COMPLETED if success else Status.FAILED
 
             return success
 
         except Exception as e:
             logger.exception(f"Erreur critique lors de l'exécution de '{filler_name}': {e}")
-            metadata["status"] = "error"
+            metadata["status"] = Status.ERROR
 
             return False
             
         finally:
             metadata["last_access"] = datetime.now().isoformat()
-            self.fm.update_filler_file_content(filler_name, "metadata", metadata)
-            self.nm.add_notification(filler_name, metadata["status"])
+            self.fm.update_filler_file_content(user_id, filler_name, FileKeys.METADATA, metadata)
+            self.nm.add_notification(user_id, filler_name, metadata["status"])
             quit_chromedriver(driver)
             if lock_file.exists():
                 lock_file.unlink()

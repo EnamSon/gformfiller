@@ -1,6 +1,9 @@
 from fastapi import APIRouter, Request, HTTPException, status, Query
 from typing import List, Dict
+from datetime import datetime, timezone
 import logging
+import os
+
 
 router = APIRouter(prefix="/gformfiller/profiles", tags=["Profiles"])
 logger = logging.getLogger(__name__)
@@ -12,10 +15,11 @@ async def list_profiles(request: Request):
     profile_names = fm.list_profiles()
     profiles = []
     for profile_name in profile_names:
+        stat = os.stat(str(fm.profiles_dir / profile_name))
         profiles.append(
             {
                 "name": profile_name,
-                "created_at": fm._get_profile_date(profile_name)
+                "last_access": datetime.fromtimestamp(stat.st_atime).isoformat()
             }
         )
     return profiles

@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from gformfiller.infrastructure.folder_manager import FolderManager
 from gformfiller.infrastructure.config_manager import ConfigManager
 from gformfiller.infrastructure.notif_manager import NotifManager
+from gformfiller.infrastructure.auth_manager import AuthManager
 from gformfiller.core.auth_worker import AuthWorker
 from gformfiller.core.filler_worker import FillerWorker
 from gformfiller.api.profiles import router as profiles_router
@@ -9,6 +10,7 @@ from gformfiller.api.fillers import router as fillers_router
 from gformfiller.api.system import router as system_router
 from gformfiller.api.inscriptions import router as inscriptions_router
 from gformfiller.api.notifications import router as notifications_router
+from gformfiller.api.auth import router as auth_router
 from fastapi.middleware.cors import CORSMiddleware
 
 import logging
@@ -32,6 +34,7 @@ def create_app() -> FastAPI:
     folder_manager = FolderManager()
     config_manager = ConfigManager(folder_manager)
     notif_manager = NotifManager(folder_manager)
+    auth_manager = AuthManager(folder_manager)
 
     # 2. Initialize Workers
     auth_worker = AuthWorker(folder_manager, config_manager)
@@ -41,6 +44,7 @@ def create_app() -> FastAPI:
     app.state.folder_manager = folder_manager
     app.state.config_manager = config_manager
     app.state.notif_manager = notif_manager
+    app.state.auth_manager = auth_manager
     app.state.auth_worker = auth_worker
     app.state.automation_worker = automation_worker
 
@@ -50,6 +54,7 @@ def create_app() -> FastAPI:
     app.include_router(system_router)
     app.include_router(inscriptions_router)
     app.include_router(notifications_router)
+    app.include_router(auth_router)
 
     return app
 

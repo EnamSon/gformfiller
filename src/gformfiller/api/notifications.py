@@ -1,9 +1,10 @@
 # gformfiller/api/notifications
 
-from gformfiller.infrastructure.folder_manager.constants import RECORD_DIR
+from gformfiller.infrastructure.folder_manager.constants import RECORD_SUBDIR
+from .deps import get_current_user
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi import (
-    APIRouter, Request, HTTPException,
+    APIRouter, Request, HTTPException, Depends,
     Body, UploadFile, File, BackgroundTasks, Form
 )
 import os
@@ -17,11 +18,15 @@ router = APIRouter(prefix="/gformfiller/notifications", tags=["Notifications"])
 
 
 @router.get("/")
-async def get_notifications_list(request: Request, base_id: int = 0):
+async def get_notifications_list(
+    request: Request,
+    base_id: int = 0,
+    current_user = Depends(get_current_user)
+):
     nm = request.app.state.notif_manager
     
     # 1. Récupération des données brutes de la DB
-    raw_notifs = nm.get_notifications(last_id=base_id)
+    raw_notifs = nm.get_notifications(current_user, last_id=base_id)
 
     enriched_notifications = []
     
@@ -59,21 +64,26 @@ async def get_notifications_list(request: Request, base_id: int = 0):
     return enriched_notifications
 
 @router.get("/details/")
-async def get_notif_details(request: Request, id: int):
+async def get_notif_details(
+    request: Request,
+    id: int,
+    current_user: str = Depends(get_current_user)
+):
     nm = request.app.state.notif_manager
     fm = request.app.state.folder_manager
     
-    notif = nm.get_notif_by_id(id)
+    notif = nm.get_notif_by_id(current_user, id)
     if not notif:
         raise HTTPException(status_code=404, detail="Notification introuvable")
 
     filler_name = notif["filler_name"]
-    filler_dir = fm.fillers_dir / filler_name
+    filler_paths = fm.get_filler_paths(current_user, filler_name)
+    filler_dir = filler_paths["root"]
 
     if not filler_dir.exists():
         raise HTTPException(status_code=404, detail="Dossier du candidat introuvable sur le disque")
 
-    record_dir = filler_dir / RECORD_DIR
+    record_dir = filler_paths[RECORD_SUBDIR]
 
     if not record_dir.exists() or not any(record_dir.rglob('*')):
         return {

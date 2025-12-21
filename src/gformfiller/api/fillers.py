@@ -5,10 +5,13 @@ import os
 from typing import Dict, Any, List, Optional
 from fastapi import (
     APIRouter, Request, HTTPException, status,
-    Body, UploadFile, File, BackgroundTasks
+    Body, UploadFile, File, BackgroundTasks, Depends
 )
-from gformfiller.infrastructure.folder_manager.constants import METADATA_FILE
-
+from gformfiller.infrastructure.folder_manager.constants import (
+    METADATA_FILE, FileKeys, FILES_SUBDIR, FORMDATA_FILE
+)
+from gformfiller.core.constants import Status
+from .deps import get_current_user
 
 router = APIRouter(prefix="/gformfiller/fillers", tags=["Fillers"])
 logger = logging.getLogger(__name__)
@@ -16,13 +19,15 @@ logger = logging.getLogger(__name__)
 # --- Filler Lifecycle ---
 
 @router.get("/", response_model=List[Dict[str, str]])
-async def list_fillers(request: Request):
+async def list_fillers(
+    request: Request, current_user: str = Depends(get_current_user)
+):
     """List all available fillers."""
     fm = request.app.state.folder_manager
-    fillers_name = fm.list_fillers()
+    fillers_name = fm.list_fillers(current_user)
     fillers = []
     for filler_name in fillers_name:
-        metadata = fm.get_filler_file_content(filler_name, METADATA_FILE)
+        metadata = fm.get_filler_file_content(current_user, filler_name, METADATA_FILE)
         fillers.append({
             "name": filler_name,
             "date": metadata.get("created_at", "")
@@ -30,25 +35,33 @@ async def list_fillers(request: Request):
     return fillers
 
 @router.post("/{filler_name}/", status_code=status.HTTP_201_CREATED)
-async def create_filler(request: Request, filler_name: str):
+async def create_filler(
+    request: Request,
+    filler_name: str,
+    current_user: str = Depends(get_current_user)
+):
     """Initialize a new filler structure (folders + default JSON files)."""
     fm = request.app.state.folder_manager
-    if filler_name in fm.list_fillers():
+    if filler_name in fm.list_fillers(current_user):
         raise HTTPException(status_code=400, detail="Filler already exists")
     
     try:
-        fm.create_filler(filler_name)
+        fm.create_filler(current_user, filler_name)
         return {"message": f"Filler '{filler_name}' initialized successfully."}
     except Exception as e:
         logger.error(f"Error creating filler {filler_name}: {e}")
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.delete("/{filler_name}/")
-async def delete_filler(request: Request, filler_name: str):
+async def delete_filler(
+    request: Request,
+    filler_name: str,
+    current_user: str = Depends(get_current_user)
+):
     """Delete a filler and all its associated data."""
     fm = request.app.state.folder_manager
     try:
-        fm.delete_filler(filler_name)
+        fm.delete_filler(current_user, filler_name)
         return {"message": f"Filler '{filler_name}' deleted."}
     except Exception as e:
         raise HTTPException(status_code=404, detail=f"Filler not found or error: {e}")
@@ -56,17 +69,25 @@ async def delete_filler(request: Request, filler_name: str):
 # --- JSON Content Management ---
 
 @router.get("/{filler_name}/{file_key}/", response_model=Dict[str, Any])
-async def get_filler_file(request: Request, filler_name: str, file_key: str):
+async def get_filler_file(
+    request: Request,
+    filler_name: str,
+    file_key: str,
+    current_user: str = Depends(get_current_user)
+):
     """
     Retrieve content of a specific JSON file.
     Valid keys: 'config', 'formdata', 'metadata'
     """
-    if file_key not in ["config", "formdata", "metadata"]:
-        raise HTTPException(status_code=400, detail="Invalid file key. Use 'config', 'formdata' or 'metadata'.")
+    if file_key not in [FileKeys.CONFIG, FileKeys.FORMDATA, FileKeys.METADATA]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file key. Use '{FileKeys.CONFIG}', '{FileKeys.FORMDATA}' or '{FileKeys.METADATA}'."
+        )
     
     fm = request.app.state.folder_manager
     try:
-        return fm.get_filler_file_content(filler_name, file_key)
+        return fm.get_filler_file_content(current_user, filler_name, file_key)
     except FileNotFoundError:
         raise HTTPException(status_code=404, detail=f"File {file_key}.json not found for this filler.")
 
@@ -75,19 +96,21 @@ async def update_filler_file(
     request: Request, 
     filler_name: str, 
     file_key: str, 
-    data: Dict[str, Any] = Body(...)
+    data: Dict[str, Any] = Body(...),
+    current_user: str = Depends(get_current_user)
 ):
     """
     Update a JSON file. 
     If updating 'formdata', it automatically resolves filenames to absolute paths.
     """
-    if file_key not in ["config", "formdata", "metadata"]:
+    if file_key not in [FileKeys.CONFIG, FileKeys.FORMDATA, FileKeys.METADATA]:
         raise HTTPException(status_code=400, detail="Invalid file key.")
     
     fm = request.app.state.folder_manager
     
-    filler_path = fm.fillers_dir / filler_name
-    if not filler_path.exists():
+    filler_paths = fm.get_filler_paths(current_user, filler_name)
+    filler_dir = filler_paths["root"]
+    if not filler_dir.exists():
         logger.warning(f"Filler {filler_name} not found. Creating...")
         try:
             fm.create_filler(filler_name)
@@ -95,17 +118,17 @@ async def update_filler_file(
             logger.error(f"Error creating filler {filler_name}: {e}")
             raise HTTPException(status_code=500, detail=str(e))
     # --- Path resolution logic for FileUploadResponse ---
-    if file_key == "formdata" and "FileUploadResponse" in data:
-        files_base_path = fm.fillers_dir / filler_name / "files"
+    if file_key == FileKeys.FORMDATA and "FileUploadResponse" in data:
+        files_dir = filler_paths[FILES_SUBDIR]
         
         for field, filename in data["FileUploadResponse"].items():
             if filename:
-                absolute_path = files_base_path / filename
+                absolute_path = files_dir / filename
                 data["FileUploadResponse"][field] = str(absolute_path)
                 logger.debug(f"Resolved file path for {field}: {absolute_path}")
 
     try:
-        fm.update_filler_file_content(filler_name, file_key, data)
+        fm.update_filler_file_content(current_user, filler_name, file_key, data)
         return {"message": f"{file_key}.json updated and paths resolved successfully."}
     except Exception as e:
         logger.error(f"Failed to update file {file_key}: {e}")
@@ -114,22 +137,28 @@ async def update_filler_file(
 # --- File Upload Management ---
 
 @router.post("/{filler_name}/files/")
-async def upload_filler_files(request: Request, filler_name: str, files: List[UploadFile] = File(...)):
+async def upload_filler_files(
+    request: Request,
+    filler_name: str,
+    files: List[UploadFile] = File(...),
+    current_user: str = Depends(get_current_user)
+):
     """
     Upload files (PDFs, Images, etc.) to the filler's 'files/' directory.
     These files can then be used by the AutomationWorker to fill upload fields.
     """
     fm = request.app.state.folder_manager
     uploaded_names = []
-    
+    filler_paths = fm.get_filler_paths(current_user, filler_name)
+    files_dir = filler_paths[FILES_SUBDIR]
+
     try:
         # Resolve target directory
-        target_dir = fm.fillers_dir / filler_name / "files"
-        if not target_dir.exists():
+        if not files_dir.exists():
             raise HTTPException(status_code=404, detail="Filler directory structure not found.")
 
         for file in files:
-            file_path = target_dir / file.filename
+            file_path = files_dir / file.filename
             with open(file_path, "wb") as f:
                 f.write(await file.read())
             uploaded_names.append(file.filename)
@@ -147,13 +176,14 @@ async def run_filler(
     filler_name: str, 
     request: Request,
     background_tasks: BackgroundTasks,
-    form_data_override: Optional[Dict[str, Any]] = Body(None)
+    form_data_override: Optional[Dict[str, Any]] = Body(None),
+    current_user: str = Depends(get_current_user)
 ):
     fm = request.app.state.folder_manager
     worker = request.app.state.automation_worker
 
     # 1. Vérification de l'existence du filler
-    if filler_name not in fm.list_fillers():
+    if filler_name not in fm.list_fillers(current_user):
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND, 
             detail=f"Filler '{filler_name}' introuvable."
@@ -165,32 +195,36 @@ async def run_filler(
     if final_form_data is None:
         try:
             # On récupère les données locales si aucun override n'est fourni
-            final_form_data = fm.get_filler_file_content(filler_name, "formdata")
-            logger.info(f"Using local formdata.json for {filler_name}")
+            final_form_data = fm.get_filler_file_content(
+                current_user, filler_name, FileKeys.FORMDATA
+            )
+            logger.info(f"Using local {FORMDATA_FILE} for {filler_name}")
         except FileNotFoundError:
             logger.warning(f"No local formdata found for {filler_name}, starting with empty data.")
             final_form_data = {}
 
     # 3. Résolution des chemins de fichiers (FileUploadResponse)
     # On s'assure que même les données envoyées via override ont des chemins absolus
+    filler_paths = fm.get_filler_paths(current_user, filler_name)
     if "FileUploadResponse" in final_form_data:
-        files_base_path = fm.fillers_dir / filler_name / "files"
+        files_dir = filler_paths[FILES_SUBDIR]
         for field, filename in final_form_data["FileUploadResponse"].items():
             if filename and not os.path.isabs(str(filename)):
-                final_form_data["FileUploadResponse"][field] = str(files_base_path / filename)
+                final_form_data["FileUploadResponse"][field] = str(files_dir / filename)
 
     # 4. Ajout à la file d'attente des tâches de fond
     try:
         logger.info(f"Enqueuing automation for '{filler_name}'")
 
         background_tasks.add_task(
-            worker.run, 
+            worker.run,
+            user_id=current_user,
             filler_name=filler_name, 
             form_data=final_form_data # On passe les données prêtes à l'emploi
         )
 
         return {
-            "status": "accepted",
+            "status": Status.PENDING,
             "message": f"Automation for '{filler_name}' started. Monitoring available at /status.",
             "filler": filler_name
         }
@@ -203,17 +237,21 @@ async def run_filler(
         )
 
 @router.get("/{filler_name}/status")
-async def get_filler_status(request: Request, filler_name: str):
+async def get_filler_status(
+    request: Request,
+    filler_name: str,
+    current_user: str = Depends(get_current_user)
+):
     """
     Retrieve the current execution status from metadata.
     Essential when using background tasks to know when the work is done.
     """
     fm = request.app.state.folder_manager
     try:
-        metadata = fm.get_filler_file_content(filler_name, "metadata")
+        metadata = fm.get_filler_file_content(current_user, filler_name, FileKeys.METADATA)
         return {
             "filler": filler_name,
-            "status": metadata.get("status", "unknown"),
+            "status": metadata.get("status", Status.UNKNOW),
             "last_update": metadata.get("updated_at", "N/A")
         }
     except Exception:

@@ -19,7 +19,8 @@ dependencies = [
     "anthropic (>=0.75.0,<0.76.0)",
     "fastapi (>=0.124.4,<0.125.0)",
     "uvicorn (>=0.38.0,<0.39.0)",
-    "python-multipart (>=0.0.21,<0.0.22)"
+    "python-multipart (>=0.0.21,<0.0.22)",
+    "passlib (>=1.7.4,<2.0.0)"
 ]
 
 [tool.poetry]
