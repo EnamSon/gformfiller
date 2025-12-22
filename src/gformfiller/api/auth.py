@@ -52,5 +52,5 @@ async def signin(request: Request, username: str = Form(...), password: str = Fo
 @router.get("/me/")
 async def get_me(request: Request, current_user: str = Depends(get_current_user)):
     return {
-        'username': "UserName"
+        'username': current_user
     }
